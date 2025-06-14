@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Drawing App</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; }
+        canvas { border: 1px solid #000; cursor: crosshair; display: block; margin: 10px auto; }
+        #toolbar { margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+<h1>Drawing App</h1>
+
+<div id="toolbar">
+    <label>Mode:
+        <select id="mode">
+            <option value="point">Titik</option>
+            <option value="line">Garis</option>
+            <option value="rectangle">Persegi</option>
+            <option value="circle">Lingkaran</option>
+            <option value="ellipse">Elips</option>
+        </select>
+    </label>
+    <label>Warna:
+        <input type="color" id="color" value="#ff0000">
+    </label>
+    <button id="clearBtn">Clear</button>
+</div>
+
+<canvas id="canvas" width="800" height="600"></canvas>
+
+<script type="text/python">
+    from js import document
+    from pyodide.ffi import create_proxy
+
+    canvas = document.getElementById("canvas")
+    ctx = canvas.getContext("2d")
+
+    mode = document.getElementById("mode")
+    color_input = document.getElementById("color")
+    clear_btn = document.getElementById("clearBtn")
+
+    start_x = 0
+    start_y = 0
+    drawing = False
+
+    def get_mouse_pos(evt):
+        rect = canvas.getBoundingClientRect()
+        return evt.clientX - rect.left, evt.clientY - rect.top
+
+    def on_mouse_down(evt):
+        global start_x, start_y, drawing
+        start_x, start_y = get_mouse_pos(evt)
+        drawing = True
+
+    def on_mouse_up(evt):
+        global drawing
+        if not drawing:
+            return
+        drawing = False
+        end_x, end_y = get_mouse_pos(evt)
+        ctx.strokeStyle = color_input.value
+        ctx.fillStyle = color_input.value
+        m = mode.value
+
+        if m == "point":
+            ctx.beginPath()
+            ctx.arc(end_x, end_y, 2, 0, 2 * 3.14)
+            ctx.fill()
+        elif m == "line":
+            ctx.beginPath()
+            ctx.moveTo(start_x, start_y)
+            ctx.lineTo(end_x, end_y)
+            ctx.stroke()
+        elif m == "rectangle":
+            w, h = end_x - start_x, end_y - start_y
+            ctx.strokeRect(start_x, start_y, w, h)
+        elif m == "circle":
+            r = ((end_x - start_x)**2 + (end_y - start_y)**2) ** 0.5
+            ctx.beginPath()
+            ctx.arc(start_x, start_y, r, 0, 2 * 3.14)
+            ctx.stroke()
+        elif m == "ellipse":
+            rx = abs(end_x - start_x)
+            ry = abs(end_y - start_y)
+            ctx.beginPath()
+            ctx.ellipse(start_x, start_y, rx, ry, 0, 0, 2 * 3.14)
+            ctx.stroke()
+
+    def on_clear(evt):
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+    canvas.addEventListener("mousedown", create_proxy(on_mouse_down))
+    canvas.addEventListener("mouseup", create_proxy(on_mouse_up))
+    clear_btn.addEventListener("click", create_proxy(on_clear))
+</script>
+
+<script src="https://cdn.jsdelivr.net/pyodide/v0.24.1/full/pyodide.js"></script>
+<script>
+    async function main() {
+      let pyodide = await loadPyodide()
+      await pyodide.runPythonAsync(document.querySelector("script[type='text/python']").textContent)
+    }
+    main()
+</script>
+</body>
+</html>
